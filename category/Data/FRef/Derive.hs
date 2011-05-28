@@ -80,11 +80,12 @@ makeRefs (DataD ctx typeName params constrs _) = do
     -- Fully apply typeName to its parameters to get a concrete type.
     -- 'stype' is for 'structure type', as opposed to 'ftype', 'field type',
     -- used below.
-    let stype = foldl AppT (ConT typeName) (map VarT params)
+    let stype = foldl AppT (ConT typeName) (map (\(PlainTV n) -> VarT n) params)
     
     -- Names to be used in code generation.
     let [ref,refClass] = map mkName ["arrRef'", "RefArrow"]
     [r,s,x] <- mapM newName ["r", "s", "x"]
+    let r' = PlainTV r
     
     -- Generate the type signature and ref definition for the given
     -- field name and type.  This is mapped over all the fields.
@@ -92,8 +93,9 @@ makeRefs (DataD ctx typeName params constrs _) = do
           field  = mkName (init (nameBase field_))  -- drop the underscore
           
           sig    = SigD field typ                   -- field :: <typ>
-          typ    = ForallT (r:params) (refR:ctx) ty -- (<refR>, ...) => <ty>
-          refR   = ConT refClass `AppT` VarT r      -- RefArrow r
+          typ    = ForallT (r':params) (refR:ctx) ty -- (<refR>, ...) => <ty>
+--           refR   = ConT refClass `AppT` VarT r      -- RefArrow r
+          refR   = ClassP refClass [VarT r]      -- RefArrow r
           ty     = VarT r `AppT` stype `AppT` ftype -- r stype ftype
           
           def    = ValD (VarP field) (NormalB body) []       -- field = <body>
