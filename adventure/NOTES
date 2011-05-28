@@ -1,0 +1,92 @@
+Objects and identity:
+
+Multiple copies of an object can exist, but all these copies are 
+  semantically THE SAME object.  Not a problem if the object is constant.
+  More problematic for objects which can be altered (i.e. child objects
+  added/removed) but it's OK as long as this limitation is explained.
+  There's not really any way around it while still supporting the nice
+  way of constructing/linking objects through the EDSL.
+
+Could even be used to implement weird game features -- e.g. a
+teleportation machine, or a bank, or whatever -- it could be in many
+locations but still "the same" object.
+
+This syntax:
+
+require (foo) "message"
+  (do blah
+      blah
+      blah)
+
+is bad, requires too many parens.  It would be nice if we could just say
+
+do require foo "message"
+   blah
+   blah
+   blah
+
+i.e. like "guard".  Make Adv a MonadPlus, with a "failure" mode of some
+sort.  should be pretty easy to do --> much nicer EDSL syntax!
+
+Done!
+
+Idea (3/7/08): Use ContT explicitly, and pass around two
+  continuations: one representing the "next thing" to be done
+  (allowing early exit from actions due to failed 'require's, and
+  another representing the "game exit" continuation.  This way, all
+  the "stay/non-stay" stuff would be completely moot.  A "stay" could
+  always be appended, but a "die" or "restart" or whatever could
+  always jump all the way out from however deeply they are nested.
+
+Better idea (3/8/08): Create a custom monad transformer, sort of like
+  MaybeT except with FOUR constructors rather than two:
+    
+    - Continue: normal, like 'Just' in MaybeT.
+
+    - Exit: computation should exit immediately.  For use with 'die'
+      and so on.
+
+    - Fail: some requirement was not satisfied, so all subsequent
+      computation should be ignored; scope can be limited by a special
+      function to change 'Fail' into 'CondFail'.  Note this function
+      does nothing to 'Exit' however.
+
+    - CondFail: A guarded conditional failure.  When sequenced with >>=
+      acts just like Continue ().  However, it can also be combined with
+      special orElse function, which chooses the first non-failing 
+      condition.
+
+Ideas for improvement:
+
+  * Per-object state, i.e. "properties".  Something with Dynamic, perhaps?
+    (** v 0.1)
+  * Prompt monad for replay/testing/etc. (v 0.2+)
+  * Add 'scripting' capabilities for conversing with characters.
+    What should/could this look like?  (v 0.2+)
+  * Configurable messages from the engine, along with library for
+    grammar stuff. (v 0.2+)
+
+----------
+Ideas for command-line parsing redo.  Command-line parsing will now
+return a custom data structure with as much parsing information as possible.
+
+General principles:
+
+  * Keep as much information available as possible.  Don't destroy any
+    information.
+  * Return lists of possibilities rather than arbitrary decisions.
+  * Put decisions in the hands of consumer code, providing as much support
+    for nice easy access to information as possible.
+
+Keep original command line verbatim.
+Next, lowercase everything, break into words.
+
+Parse each word into a (String,[possibilities]) pair: original
+  (lowercased) word, along with a list of possible interpretations
+  (repurpose 'Comand' data type?)
+
+  - object, along with type (inventory, local, global)
+  - direction
+
+Provide functions for extracting all of this information.
+  

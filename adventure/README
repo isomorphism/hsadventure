@@ -1,0 +1,14 @@
+
+Game.HAdventure is a set of library modules which provide an expressive
+EDSL for authoring interactive text adventure games, in the style of
+???.
+
+------------------------------------------------------------------------
+
+Building:
+
+Get the dependencies
+
+Build with Cabal:
+
+Building Haddock documentation (optional):

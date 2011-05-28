@@ -1,0 +1,17 @@
+* replay monad!  do some research first...
+  http://www.mail-archive.com/haskell-cafe@haskell.org/msg33040.html
+* per-object state.
+* pluralization/grammar.
+* dynamic recompilation/loading?
+* make sure child objects work through the Map even for non-location 
+    objects.
+* improve haddock documentation.
+* configuration: make messages configurable?
+
+* tools to make a the adventure development/testing/update/recompile
+  cycle as fast & nice as possible.  Dynamic
+  restart/recompile/reloading, tools to track/display game tree? and
+  so on.
+* add 'go' command as a possibility for moving (i.e. 'go east' instead of just 'east')
+* redo command-line parsing.
+* source of randomness.

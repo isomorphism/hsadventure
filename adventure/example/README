@@ -1,0 +1,3 @@
+To build (for example):
+
+  ghc -o dunnet --make Dunnet.hs

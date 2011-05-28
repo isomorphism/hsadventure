@@ -1,0 +1,19 @@
+name:                hadventure
+version:             0.1
+stability:           experimental
+synopsis:            EDSL for authoring text adventure games
+description:         HAdventure is a set of Haskell libraries which
+                     provide an expressive EDSL for authoring
+                     interactive text adventure games.
+category:            Game
+build-type:          Simple
+license:             BSD3
+license-file:        LICENSE
+extra-source-files:  README
+author:              Brent Yorgey 
+maintainer:          byorgey@gmail.com
+build-Depends:       base, containers, mtl, readline, category, MaybeT, pretty
+exposed-modules:     Game.HAdventure.Types
+                     Game.HAdventure.Engine
+                     Game.HAdventure.Builder
+                     
