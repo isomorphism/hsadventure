@@ -1,5 +1,5 @@
 name:                hadventure
-version:             0.1
+version:             0.2.0
 stability:           experimental
 synopsis:            EDSL for authoring text adventure games
 description:         HAdventure is a set of Haskell libraries which
@@ -12,7 +12,9 @@ license-file:        LICENSE
 extra-source-files:  README
 author:              Brent Yorgey 
 maintainer:          byorgey@gmail.com
-build-Depends:       base, containers, mtl, readline, category, MaybeT, pretty
+build-Depends:       base >= 3 && < 5
+                   , mtl == 2.*, transformers == 0.2.*
+                   , containers, readline, fclabels, pretty
 exposed-modules:     Game.HAdventure.Types
                      Game.HAdventure.Engine
                      Game.HAdventure.Builder

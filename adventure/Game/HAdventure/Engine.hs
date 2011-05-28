@@ -70,8 +70,8 @@ msg' = io . putStr . pp 80
 -- | Describe the current location to the player: show its name,
 --   description, and a list of any (non-hidden) 'Object's.
 describeCurLoc :: Adv ()
-describeCurLoc = do l <- gets loc
-                    msg $ name l
+describeCurLoc = do l <- gets $ getL loc
+                    msg $ getL name l
                     describeLoc l
 
 -- | Describe a location to the player: show its description and
@@ -82,9 +82,9 @@ describeLoc l = describeObj l >> describeChildren l
 -- | Describe an 'Object' to the player by showing its description, or
 --   a default message if the description is empty.
 describeObj :: Object -> Adv ()
-describeObj o = msg (if null (description o)
+describeObj o = msg (if null (getL description o)
                        then "It's...not all that special."
-                       else description o)
+                       else getL description o)
 
 -- XXX better pluralization.
 -- XXX parameter saying whether to show hidden objects?
@@ -94,18 +94,18 @@ describeObj o = msg (if null (description o)
 -- | List the (non-hidden) children of an 'Object'.
 describeChildren :: Object -> Adv ()
 describeChildren o = mapM_ msg . process =<< lookupChildren o
-  where process = map sayHere . rle . filter (not . hidden)
-        sayHere (c,1) = "There is a " ++ (name c) ++ " here."
-        sayHere (c,n) = "There are " ++ (show n) ++ " " ++ (name c) ++ "s here."
+  where process = map sayHere . rle . filter (not . getL hidden)
+        sayHere (c,1) = "There is a " ++ (getL name c) ++ " here."
+        sayHere (c,n) = "There are " ++ (show n) ++ " " ++ (getL name c) ++ "s here."
 
 -- | Get a list of all the children of the current location.
 curObjectList :: Adv [Object]
-curObjectList = gets loc >>= lookupChildren
+curObjectList = gets (getL loc) >>= lookupChildren
 
 -- | Get a list of all the children of the given 'Object'.
 lookupChildren :: Object -> Adv [Object]
-lookupChildren o = do cm <- gets childMap
-                      return (fromMaybe [] $ M.lookup (name o) cm)
+lookupChildren o = do cm <- gets $ getL childMap
+                      return (fromMaybe [] $ M.lookup (getL name o) cm)
 
 -----------------------------------------------------------------------
 -- main REPL, parsing, etc.
@@ -176,17 +176,17 @@ lookupObject s = lookupObjectByName s . concat
 -- | Look up an 'Object' by name from among a list of objects.
 lookupObjectByName :: String -> [Object] -> Maybe Object
 lookupObjectByName n objs = find byName objs
-  where byName o = (n `isPrefixOf` name o) ||
-                   or (map (n `isPrefixOf`) $ aliases o)
+  where byName o = (n `isPrefixOf` getL name o) ||
+                   or (map (n `isPrefixOf`) $ getL aliases o)
 
 executeCmd :: Command -> Adv ()
 executeCmd c = do
-  d <- targetToMaybe <$> gets dirO  -- XXX FIXME: targetToMaybe isn't right here,
-  l <- gets loc                     -- want to take advantage of extra information in Target!
-  ga <- gets globalActions
+  d <- targetToMaybe <$> gets (getL dirO)  -- XXX FIXME: targetToMaybe isn't right here,
+  l <- gets $ getL loc                     -- want to take advantage of extra information in Target!
+  ga <- gets $ getL globalActions
   fromMaybe (badCmd c >> stay) $           -- try, in order:
-    msum [ lookupCmd c =<< actions <$> d   -- actions on d.o.
-         , lookupCmd c .   actions  $  l   -- local actions
+    msum [ lookupCmd c =<< getL actions <$> d   -- actions on d.o.
+         , lookupCmd c . getL actions  $  l   -- local actions
          , lookupCmd c ga ]                -- global actions
 
 -- | Present a message to the user when they have issued an
@@ -212,11 +212,11 @@ ambigMsg cmds = msg $ "Perhaps you meant: " ++ strs
 --   the 'Object' map so it can be modified by the player.
 storeObjectsOnFirstVisit :: Adv ()
 storeObjectsOnFirstVisit = do
-    vMap <- gets visited
-    l <- gets loc
-    if M.member (name l) vMap
+    vMap <- gets $ getL visited
+    l <- gets $ getL loc
+    if M.member (getL name l) vMap
       then return ()
-      else updateS childMap (M.insert (name l) (children l)) >> visit l
+      else updateS childMap (M.insert (getL name l) (getL children l)) >> visit l
 
 -- | Given a list of (Command, action) pairs, create a map that can be
 --   used for looking up the actions corresponding to given commands.
@@ -239,7 +239,7 @@ doGo = do d <- gets dirO
 -- | Describe the direct object to the player, or describe the current
 --   location if they did not specify a direct object.
 look :: Adv ()
-look = do d <- gets dirO
+look = do d <- gets $ getL dirO
           handleTarget describeCurLoc unknownObjMsg describeObj d
 
 unknownObjMsg :: String -> Adv ()
@@ -254,7 +254,7 @@ pp n = renderStyle (style {lineLength = n, ribbonsPerLine = 1}) .
 
 -- | Display the player's score.
 showScore :: Adv ()
-showScore = do s <- gets score
+showScore = do s <- gets $ getL score
                msg $ "You have a score of " ++ (show s) ++ "."
 
 -- | Display the player's inventory.
@@ -265,8 +265,8 @@ showInventory =
            then msg "You are not carrying anything."
            else do msg "You are carrying:"
                    mapM_ (msg . sayItem) $ rle i
-  where sayItem (c,1) = name c
-        sayItem (c,n) = show n ++ " " ++ name c ++ "s"  -- XXX grammar
+  where sayItem (c,1) = getL name c
+        sayItem (c,n) = show n ++ " " ++ getL name c ++ "s"  -- XXX grammar
 
 -- | Sort and then run-length encode a list.
 rle :: (Ord a) => [a] -> [(a,Int)]
@@ -277,14 +277,14 @@ rle = map (head &&& length) . group . sort
 --   message if the direct object is invalid, unspecified, or not
 --   takeable.
 doTake :: Adv ()
-doTake = do d    <- gets dirO
+doTake = do d    <- gets $ getL dirO
             objs <- curObjectList
             doTake' d objs
   where
     doTake' None        _    = msg "Take what?"
     doTake' (Unknown s) _    = msg $ noneHereMsg s
-    doTake' (Target o)  objs = case (o `elem` objs, takeable o) of
-                                 (False, _) -> msg $ noneHereMsg (name o)
+    doTake' (Target o)  objs = case (o `elem` objs, getL takeable o) of
+                                 (False, _) -> msg $ noneHereMsg (getL name o)
                                  (_, False) -> msg "You can't take that."
                                  _          -> addToInventory o
 
@@ -293,7 +293,7 @@ doTake = do d    <- gets dirO
 --   location and add it to the player's inventory.
 addToInventory :: Object -> Adv ()
 addToInventory o = do
-  msg $ "You pick up the " ++ (name o) ++ "."
+  msg $ "You pick up the " ++ (getL name o) ++ "."
   delObjectHere o
   modifyInv (o:)
 
@@ -301,7 +301,7 @@ addToInventory o = do
 --   inventory and add it to the current location.  Do nothing if the
 --   direct object is invalid or unspecified.
 doDrop :: Adv ()
-doDrop = do d <- gets dirO
+doDrop = do d <- gets $ getL dirO
             inv <- inventory
             doDrop' d inv
   where
@@ -314,14 +314,14 @@ doDrop = do d <- gets dirO
 -- | Perform a \'drop\': remove an object from the player's inventory,
 --   add it to the current location, and display a message.
 dropFromInventory :: Object -> Adv ()
-dropFromInventory o = do msg $ "You drop the " ++ (name o) ++ "."  -- XXX grammar
+dropFromInventory o = do msg $ "You drop the " ++ (getL name o) ++ "."  -- XXX grammar
                          modifyInv (delete o)
                          addObjectHere o
 
 -- XXX  get other commands (location/ d.o.)
 showCurrentCommands :: Adv ()
 showCurrentCommands = do
-  ga <- gets globalActions
+  ga <- gets $ getL globalActions
   let cmds = [ c | (Cmd c) <- M.keys ga ]
   io $ mapM_ putStrLn cmds
 

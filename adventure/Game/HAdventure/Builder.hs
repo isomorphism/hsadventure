@@ -1,4 +1,7 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Game.HAdventure.Builder (
 
   -- * Data types
@@ -88,29 +91,29 @@ mkAlias n | all isLower n = []
 location :: String  -- ^ The name of the location (must be unique).
          -> String  -- ^ An (optional) longer description.
          -> Object
-location n d = emptyLoc { name_        = n
-                        , description_ = d
-                        , takeable_    = False
-                        , aliases_     = mkAlias n
+location n d = emptyLoc { _name        = n
+                        , _description = d
+                        , _takeable    = False
+                        , _aliases     = mkAlias n
                         }
 
 -- | Create a new thing.
 thing :: String -- ^ The name of the thing (must be unique).
       -> String -- ^ An (optional) longer description.
       -> Object
-thing n d = emptyThing { name_        = n
-                       , description_ = d
-                       , aliases_     = mkAlias n
+thing n d = emptyThing { _name        = n
+                       , _description = d
+                       , _aliases     = mkAlias n
                        }
 
 -- | Create a new character.
 character :: String  -- ^ The name of the character (must be unique).
           -> String  -- ^ An (optional) longer description.
           -> Object
-character n d = emptyCharacter { name_        = n
-                               , description_ = d
-                               , takeable_    = False
-                               , aliases_     = mkAlias n
+character n d = emptyCharacter { _name        = n
+                               , _description = d
+                               , _takeable    = False
+                               , _aliases     = mkAlias n
                                }
 
 infixl 4 !!!, `withActions`, @@@, `withChildren`, ///, `withAliases`
@@ -118,30 +121,30 @@ infixl 4 !+, !-
 
 -- | Attach a list of actions to an object.
 (!!!), withActions :: Object -> [ActionList] -> Object
-o !!! acts = flip (update actions) o $
+o !!! acts = flip (modL actions) o $
                M.union (mkActionMap (concat acts))
 withActions = (!!!)
 
 -- | Attach a list of children (subobjects) to an object.
 (@@@), withChildren :: Object -> [Object] -> Object
-o @@@ chs = update children (++chs) o
+o @@@ chs = modL children (++chs) o
 withChildren = (@@@)
 
 -- | Specify a list of (not necessarily unique) aliases for an object.
 --   The player will be able to use any of the aliases to refer to the
 --   object (in addition to its unique name).
 (///), withAliases :: Object -> [String] -> Object
-o /// as = update aliases (++as) o
+o /// as = modL aliases (++as) o
 withAliases = (///)
 
 -- | Set an object flag to @True@. Currently, the only flags are
 --   'hidden' and 'takeable'.
-(!+) :: Object -> FRef Object Bool -> Object
-o !+ flag = set flag True o
+(!+) :: Object -> Object :-> Bool -> Object
+o !+ flag = setL flag True o
 
 -- | Set an object flag to @False@.
-(!-) :: Object -> FRef Object Bool -> Object
-o !- flag = set flag False o
+(!-) :: Object -> Object :-> Bool -> Object
+o !- flag = setL flag False o
 
 -------------------------------------------------------
 -----  Actions  ---------------------------------------
@@ -230,7 +233,7 @@ moveTo o target = delObjectHere o >> addObject o target
 --
 play :: GameConfig -> IO ()
 play gc =
-  withReadline $ runAdv (applyConfig gc >> go (startLoc gc)) initialGameState
+  withReadline $ runAdv (applyConfig gc >> go (getL startLoc gc)) initialGameState
 
 -- | Start the game at a particular starting location.  The contents
 --   of the @main@ method can be simply @'start' x@, where @x@ is the
@@ -250,18 +253,18 @@ mkConfig :: [ActionList]  -- ^ A list of global actions, e.g. @[ foo --> bar, ba
          -> Object        -- ^ The starting location.
          -> GameConfig
 mkConfig al over inv start =
-    GC { newGlobalActions_      = mkActionMap (concat al)
-       , overrideGlobalActions_ = over
-       , initialInventory_      = inv
-       , startLoc_              = start
+    GC { _newGlobalActions      = mkActionMap (concat al)
+       , _overrideGlobalActions = over
+       , _initialInventory      = inv
+       , _startLoc              = start
        }
 
 -- | Start over.
 restart :: Adv ()
-restart = do conf <- gets config
+restart = do conf <- gets $ getL config
              put initialGameState
              applyConfig conf
-             go (startLoc conf)
+             go (getL startLoc conf)
 
 -- | Kill the player.
 die :: Adv ()
@@ -357,12 +360,12 @@ has o = (o `elem`) <$> inventory
 -- | A predicate to test whether the direct object of the current
 --   player command is a certain 'Object'.
 dirObjIs :: Object -> Adv Bool
-dirObjIs o = maybe False (o ==) . targetToMaybe <$> gets dirO
+dirObjIs o = maybe False (o ==) . targetToMaybe <$> gets (getL dirO)
 
 -- | A predicate to test whether the indirect object of the current
 --   player command is a certain 'Object'.
 indirObjIs :: Object -> Adv Bool
-indirObjIs o = maybe False (o ==) . targetToMaybe <$> gets indO
+indirObjIs o = maybe False (o ==) . targetToMaybe <$> gets (getL indO)
 
 -- | A predicate to test whether a certain 'Object' is present in the
 --   player's current location, /not/ including the player's inventory.
@@ -372,7 +375,7 @@ isHere o = (o `elem`) <$> curObjectList
 -- | A predicate to test whether the player is currently at a certain
 --   location.
 isAt :: Object -> Adv Bool
-isAt l = (l ==) <$> gets loc
+isAt l = (l ==) <$> gets (getL loc)
 
 -- XXX add 'confirm' action, and use for quit/restart
 -- | A map of default game-wide commands.  These can be overridden or
@@ -391,6 +394,6 @@ defaultGlobalActions = mkActionMap . concat $
 
 initialGameState :: GameState
 initialGameState =
-    emptyGameState { globalActions_ = defaultGlobalActions
-                   , childMap_      = M.singleton inventoryID []
+    emptyGameState { _globalActions = defaultGlobalActions
+                   , _childMap      = M.singleton inventoryID []
                    }

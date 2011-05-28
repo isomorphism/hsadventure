@@ -1,9 +1,14 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, TemplateHaskell, UndecidableInstances, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Game.HAdventure.Types (
 
   -- * Basic types
 
-  FRef, update, set,
+  (:->)(..), getL, setL, modL,
 
   ObjectType(..),
   ActionMap,
@@ -62,14 +67,17 @@ module Game.HAdventure.Types (
 ) where
 
 import Control.Monad.State
-import Control.Monad.Maybe
+import Control.Monad.Trans.Maybe
 import qualified Data.Map as M
+import Data.Function
 import Data.List (delete)
 import Data.Maybe (fromMaybe, fromJust)
 import Control.Applicative ((<$>))
 
-import Data.FRef hiding (get)
-import Data.FRef.Derive
+-- import Data.FRef hiding (get)
+-- import Data.FRef.Derive
+
+import Data.Record.Label
 
 -- | Directions in which the player can travel between locations.
 data Direction = N    -- ^ north
@@ -119,26 +127,26 @@ data ObjectType = Location | Thing | Character
 --
 --   'Object's are keyed on the 'name' field, which is used to
 --   implement both equality and ordering for 'Object's.
-data Object = Obj { name_        :: String
-                  , description_ :: String
-                  , objType_     :: ObjectType
-                  , actions_     :: ActionMap
-                  , children_    :: [Object]
-                  , aliases_     :: [String]
-                  , takeable_    :: Bool
-                  , hidden_      :: Bool
+data Object = Obj { _name        :: String
+                  , _description :: String
+                  , _objType     :: ObjectType
+                  , _actions     :: ActionMap
+                  , _children    :: [Object]
+                  , _aliases     :: [String]
+                  , _takeable    :: Bool
+                  , _hidden      :: Bool
                   }
 
 -- | A default, empty object.
 emptyThing :: Object
-emptyThing = Obj { name_        = ""
-                 , description_ = ""
-                 , objType_     = Thing
-                 , actions_     = M.empty
-                 , children_    = []
-                 , aliases_     = []
-                 , takeable_    = True
-                 , hidden_      = False
+emptyThing = Obj { _name        = ""
+                 , _description = ""
+                 , _objType     = Thing
+                 , _actions     = M.empty
+                 , _children    = []
+                 , _aliases     = []
+                 , _takeable    = True
+                 , _hidden      = False
                  }
 
 -- | A convenience alias.  At some point in the future, the 'Object' type
@@ -170,24 +178,24 @@ instance Functor Target where
   fmap _ None        = None
 
 -- | A record type to store the game's persistent (mutable) state.
-data GameState = G { score_          :: Score         -- ^ current score
-                   , dirO_           :: Target Object -- ^ direct object
-                   , indO_           :: Target Object -- ^ indirect object
-                   , loc_            :: Object        -- ^ current location
-                   , childMap_       :: M.Map String [Object]
+data GameState = G { _score          :: Score         -- ^ current score
+                   , _dirO           :: Target Object -- ^ direct object
+                   , _indO           :: Target Object -- ^ indirect object
+                   , _loc            :: Object        -- ^ current location
+                   , _childMap       :: M.Map String [Object]
                        -- ^ a map with the current children of each object
-                   , visited_        :: M.Map String Object
+                   , _visited        :: M.Map String Object
                        -- ^ visited locations
-                   , globalActions_  :: ActionMap     -- ^ global actions
-                   , config_         :: GameConfig
+                   , _globalActions  :: ActionMap     -- ^ global actions
+                   , _config         :: GameConfig
                        -- ^ configuration options
                    }
 
 -- | Configuration record used for parameterizing a game.
-data GameConfig = GC { newGlobalActions_      :: ActionMap
-                     , overrideGlobalActions_ :: Bool
-                     , initialInventory_      :: [Object]
-                     , startLoc_              :: Object
+data GameConfig = GC { _newGlobalActions      :: ActionMap
+                     , _overrideGlobalActions :: Bool
+                     , _initialInventory      :: [Object]
+                     , _startLoc              :: Object
                      }
 
 data AdvCtrl a = Continue a
@@ -256,23 +264,21 @@ runAdv (Adv adv) gameState = fromAdvCtrl () <$> evalStateT (runAdvCtrlT adv) gam
 -- Note, because of this FRef deriving, the order of things in this
 -- source file is important!  Most of the code below this point must
 -- be there, because it depends on the code generated here.
-$(deriveRefs ''Object)
-$(deriveRefs ''GameState)
-$(deriveRefs ''GameConfig)
+mkLabels [''Object, ''GameState, ''GameConfig]
 
 instance Eq Object where
-  o1 == o2 = (name o1) == (name o2)
+  (==) = (==) `on` getL name
 
 instance Ord Object where
-  o1 <= o2  = (name o1) <= (name o2)
+  (<=) = (<=) `on` getL name
 
 -- | A default, empty location.
 emptyLoc :: Object
-emptyLoc = set objType Location emptyThing
+emptyLoc = setL objType Location emptyThing
 
 -- | A default, empty character.
 emptyCharacter :: Object
-emptyCharacter = set objType Character emptyThing
+emptyCharacter = setL objType Character emptyThing
 
 -- | String ID for the special \'inventory\' object.
 inventoryID :: String
@@ -280,41 +286,41 @@ inventoryID = "__INVENTORY"
 
 -- | An empty game state.
 emptyGameState :: GameState
-emptyGameState = G { score_         = 0
-                   , dirO_          = None
-                   , indO_          = None
-                   , loc_           = emptyLoc
-                   , childMap_      = M.empty
-                   , visited_       = M.empty
-                   , globalActions_ = M.empty
-                   , config_        = emptyConfig
+emptyGameState = G { _score         = 0
+                   , _dirO          = None
+                   , _indO          = None
+                   , _loc           = emptyLoc
+                   , _childMap      = M.empty
+                   , _visited       = M.empty
+                   , _globalActions = M.empty
+                   , _config        = emptyConfig
                    }
 
 -- | A default, empty game configuration.
 emptyConfig :: GameConfig
-emptyConfig = GC { newGlobalActions_      = M.empty
-                 , overrideGlobalActions_ = False
-                 , initialInventory_      = []
-                 , startLoc_              = emptyLoc
+emptyConfig = GC { _newGlobalActions      = M.empty
+                 , _overrideGlobalActions = False
+                 , _initialInventory      = []
+                 , _startLoc              = emptyLoc
                  }
 
 applyConfig :: GameConfig -> Adv ()
 applyConfig gc = do
-  (if (overrideGlobalActions gc)
+  (if getL overrideGlobalActions gc
      then setS globalActions
-     else addGlobalActions) $ newGlobalActions gc
-  modifyInv (++ (initialInventory gc))
+     else addGlobalActions) $ getL newGlobalActions gc
+  modifyInv (++ (getL initialInventory gc))
   setS config gc
 
-setS :: (MonadState s m) => FRef s a -> a -> m ()
-setS r x = modify (set r x)
+setS :: (MonadState s m) => s :-> a -> a -> m ()
+setS r x = modify (setL r x)
 
-updateS :: (MonadState s m) => FRef s a -> (a -> a) -> m ()
-updateS r f = modify (update r f)
+updateS :: (MonadState s m) => s :-> a -> (a -> a) -> m ()
+updateS r f = modify (modL r f)
 
 -- | Get the player's current inventory.
 inventory :: Adv [Object]
-inventory = (fromJust . M.lookup inventoryID) <$> gets childMap
+inventory = (fromJust . M.lookup inventoryID) <$> gets (getL childMap)
 
 -- | Modify the user's inventory with a function.
 modifyInv :: ([Object] -> [Object]) -> Adv ()
@@ -325,27 +331,27 @@ addObject :: Object    -- ^ The object to create.
           -> Object    -- ^ The parent object under which to create
                        --   the new object.
           -> Adv ()
-addObject o l = updateS childMap (M.adjust (o:) (name l))
+addObject o l = updateS childMap (M.adjust (o:) (getL name l))
 
 -- | Modify the child map by creating an object at the current
 --   location.
 addObjectHere :: Object -> Adv ()
-addObjectHere o = gets loc >>= addObject o
+addObjectHere o = gets (getL loc) >>= addObject o
 
 -- | Modify the child map by deleting an object from a given parent.
 delObject :: Object     -- ^ The object to delete.
           -> Object     -- ^ The parent object from which to delete.
           -> Adv ()
-delObject o l = updateS childMap (M.adjust (delete o) (name l))
+delObject o l = updateS childMap (M.adjust (delete o) (getL name l))
 
 -- | Modify the child map by deleting an object from the current
 --   location.
 delObjectHere :: Object -> Adv ()
-delObjectHere o = gets loc >>= delObject o
+delObjectHere o = gets (getL loc) >>= delObject o
 
 -- | Add a location to the 'visited' map.
 visit :: Object -> Adv ()
-visit o = updateS visited (M.insert (name o) o)
+visit o = updateS visited (M.insert (getL name o) o)
 
 addGlobalActions :: ActionMap -> Adv ()
 addGlobalActions acts = updateS globalActions (flip M.union acts)
