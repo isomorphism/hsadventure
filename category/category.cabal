@@ -4,7 +4,7 @@ License:        BSD3
 License-file:   LICENSE
 Author:         Twan van Laarhoven <twanvl@gmail.com>
 Maintainer:     Twan van Laarhoven <twanvl@gmail.com>
-Build-Depends:  base, template-haskell, QuickCheck
+Build-Depends:  base, template-haskell, QuickCheck < 2
 Synopsis:       Control.Category framework
 Description:    A framework for computations based on the mathematical notion of categories and morphisms.
 Exposed-Modules:
@@ -16,5 +16,5 @@ Exposed-Modules:
         Data.Invertible
 Other-Modules:
         Control.Category.Internal.Comparable
-GHC-Options: -Wall -fno-warn-orphans
+GHC-Options: -Wall -fno-warn-orphans -XFlexibleContexts
 
