@@ -14,15 +14,15 @@ dead_end = location "Dead end" (
 
 trees = thing "trees"
   "They are palm trees with a bountiful supply of coconuts in them."
-  !!! [ "climb" --> msg $ "You manage to get about two feet up the tree " ++
+  !!! [ "climb" --> msg ( "You manage to get about two feet up the tree " ++
                           "and fall back down.  You notice that the tree " ++
-                          "is very unsteady."
+                          "is very unsteady." )
 
-      , "shake" --> do msg $ "You begin to shake a tree, and notice a " ++
+      , "shake" --> do msg ( "You begin to shake a tree, and notice a " ++
                              "coconut begin to fall from the air. As " ++
                              "you try to get your hand up to block it, " ++
                              "you feel the impact as it lands on your " ++
-                             "head."
+                             "head." )
                        die
       ]
   /// ["tree"]
