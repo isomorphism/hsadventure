@@ -61,22 +61,22 @@ module Game.HAdventure.Types (
   MonadAdvCtrl(..),
 
   runAdv,
-  io,
+  Game.HAdventure.Types.outputStrLn,
+  Game.HAdventure.Types.outputStr,
+  getLineEdited,
   setS, updateS
 
 ) where
 
 import Control.Monad.State
-import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Maybe()
 import qualified Data.Map as M
 import Data.Function
 import Data.List (delete)
-import Data.Maybe (fromMaybe, fromJust)
+import Data.Maybe (fromJust)
 import Control.Applicative ((<$>))
 
--- import Data.FRef hiding (get)
--- import Data.FRef.Derive
-
+import System.Console.Haskeline
 import Data.Record.Label
 
 -- | Directions in which the player can travel between locations.
@@ -204,8 +204,8 @@ data AdvCtrl a = Continue a
 
 instance Functor AdvCtrl where
   fmap f (Continue x) = Continue (f x)
-  fmap f Exit = Exit
-  fmap f Fail = Fail
+  fmap _ Exit = Exit
+  fmap _ Fail = Fail
 
 fromAdvCtrl :: a -> AdvCtrl a -> a
 fromAdvCtrl _ (Continue x) = x
@@ -253,13 +253,14 @@ instance MonadIO m => MonadIO (AdvCtrlT m) where
 -- | The 'Adv' monad, which consists of a State monad of 'GameState'
 --   layered on top of 'IO', topped off with a custom monad
 --   transformer 'AdvCtrlT' expressing the necessary control flow.
-newtype Adv a = Adv (AdvCtrlT (StateT GameState IO) a)
+newtype Adv a = Adv (AdvCtrlT (StateT GameState (InputT IO)) a)
   deriving (Monad, Functor, MonadState GameState, MonadIO, MonadAdvCtrl)
 
 -- | Run an action in the 'Adv' monad given an initial 'GameState',
 --   resulting in an 'IO' action.
 runAdv :: Adv () -> GameState -> IO ()
-runAdv (Adv adv) gameState = fromAdvCtrl () <$> evalStateT (runAdvCtrlT adv) gameState
+runAdv (Adv adv) gameState = runInputT defaultSettings $
+                             fromAdvCtrl () <$> evalStateT (runAdvCtrlT adv) gameState
 
 -- Note, because of this FRef deriving, the order of things in this
 -- source file is important!  Most of the code below this point must
@@ -356,11 +357,14 @@ visit o = updateS visited (M.insert (getL name o) o)
 addGlobalActions :: ActionMap -> Adv ()
 addGlobalActions acts = updateS globalActions (flip M.union acts)
 
--- XXX need to do this right.
---delGlobalActions ::
+-- | Get a haskeline edited prompt
+getLineEdited :: String -> Adv (Maybe String)
+getLineEdited = Adv . lift . lift . getInputLine
 
--- | Convenience alias for 'liftIO', to perform 'IO' actions in the
---   'Adv' monad.
-io :: (MonadIO m) => IO a -> m a
-io = liftIO
+-- | A lifted version of outputStrLn
+outputStrLn :: String -> Adv ()
+outputStrLn = Adv . lift . lift . System.Console.Haskeline.outputStrLn
 
+-- | A lifted version of outputStr
+outputStr :: String -> Adv ()
+outputStr = Adv . lift . lift . System.Console.Haskeline.outputStr

@@ -14,7 +14,8 @@ author:              Brent Yorgey
 maintainer:          byorgey@gmail.com
 build-Depends:       base >= 3 && < 5
                    , mtl == 2.*, transformers == 0.2.*
-                   , containers, readline, fclabels, pretty
+                   , containers, fclabels, pretty
+                   , haskeline
 exposed-modules:     Game.HAdventure.Types
                      Game.HAdventure.Engine
                      Game.HAdventure.Builder

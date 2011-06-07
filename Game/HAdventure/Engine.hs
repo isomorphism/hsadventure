@@ -35,9 +35,7 @@ module Game.HAdventure.Engine (
   addToInventory,
   doDrop,
   dropFromInventory,
-  showCurrentCommands,
-
-  withReadline
+  showCurrentCommands
 
 ) where
 
@@ -51,7 +49,6 @@ import Control.Arrow ((&&&))
 import Data.List
 import Data.Char
 
-import System.Console.SimpleLineEditor
 
 import Text.PrettyPrint.HughesPJ
 
@@ -60,10 +57,10 @@ import Text.PrettyPrint.HughesPJ
 -- XXX paragraph width should be configurable?
 -- | Display a nicely formatted message to the player.
 msg :: String -> Adv ()
-msg = io . putStrLn . pp 80
+msg = outputStrLn . pp 80
 
 msg' :: String -> Adv ()
-msg' = io . putStr . pp 80
+msg' = outputStr . pp 80
 
 -- XXX don't print description after first visit?
 --   need to think carefully about how to do this.
@@ -117,7 +114,7 @@ lookupChildren o = do cm <- gets $ getL childMap
 stay :: Adv ()
 stay = do
     prompt
-    tokens <- maybe [] tokenise <$> (io $ getLineEdited "")  -- XXX prompt
+    tokens <- maybe [] tokenise <$> (getLineEdited "")
     if null tokens
       then stay
       else processCmdLine tokens
@@ -125,7 +122,7 @@ stay = do
 -- XXX TODO: redo with prompt monad! =)
 -- | Display a nice prompt.
 prompt :: Adv ()
-prompt = io $ putStr "> "
+prompt = outputStr "> "
 
 tokenise :: String -> [String]
 tokenise = filter (`notElem` smallWords) . words . map toLower
@@ -323,10 +320,4 @@ showCurrentCommands :: Adv ()
 showCurrentCommands = do
   ga <- gets $ getL globalActions
   let cmds = [ c | (Cmd c) <- M.keys ga ]
-  io $ mapM_ putStrLn cmds
-
--- | Bracket an IO action with operations to set up and tear down the
---   readline library.
-withReadline :: IO () -> IO ()
-withReadline = (initialise>>) . (>>restore)
-
+  mapM_ outputStrLn cmds
