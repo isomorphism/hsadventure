@@ -1,9 +1,15 @@
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Game.HAdventure.Prompt where
 
 import Control.Monad.State
 import Control.Monad.Identity
-import Control.Monad.Trans
+import Control.Monad.Trans()
 
 class (Monad m) => MonadPrompt p m | m -> p where
   prompt :: p a -> m a

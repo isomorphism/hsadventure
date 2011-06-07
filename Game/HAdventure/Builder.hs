@@ -71,8 +71,6 @@ import Data.List
 import Data.Maybe
 import Data.Char
 
-import System.Console.SimpleLineEditor (getLineEdited)
-
 -------------------------------------------------------
 -----  Object Construction  ---------------------------
 -------------------------------------------------------
@@ -232,8 +230,7 @@ moveTo o target = delObjectHere o >> addObject o target
 -- >   where cfg = mkConfig ...
 --
 play :: GameConfig -> IO ()
-play gc =
-  withReadline $ runAdv (applyConfig gc >> go (getL startLoc gc)) initialGameState
+play gc = runAdv (applyConfig gc >> go (getL startLoc gc)) initialGameState
 
 -- | Start the game at a particular starting location.  The contents
 --   of the @main@ method can be simply @'start' x@, where @x@ is the
@@ -273,7 +270,7 @@ die = msg "You have died." >> showScore >> exit
 -- XXX refactor all prompt stuff.
 promptUser :: String -> Adv String
 promptUser p = do msg' (p++" ")
-                  io $ (fromMaybe "") <$> getLineEdited ""
+                  (fromMaybe "") <$> getLineEdited ""
 
 -------------------------------------------------------
 -----  Dependencies  ----------------------------------
